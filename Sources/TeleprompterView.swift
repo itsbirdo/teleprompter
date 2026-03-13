@@ -47,7 +47,7 @@ struct TeleprompterView: View {
                     // Reading position indicator
                     VStack {
                         Rectangle()
-                            .fill(Color(hex: "#6C5CE7")!.opacity(0.4))
+                            .fill(Color(hex: "#B2884F")!.opacity(0.5))
                             .frame(height: 1)
                             .padding(.horizontal, 20)
                             .offset(y: viewHeight * 0.3)
@@ -84,7 +84,7 @@ struct TeleprompterView: View {
                         HStack {
                             Spacer()
                             Circle()
-                                .fill(appState.isSpeaking ? Color.green : Color.white.opacity(0.2))
+                                .fill(appState.isSpeaking ? Color(hex: "#B2884F")! : Color.white.opacity(0.2))
                                 .frame(width: 8, height: 8)
                                 .animation(.easeInOut(duration: 0.15), value: appState.isSpeaking)
                                 .padding(12)

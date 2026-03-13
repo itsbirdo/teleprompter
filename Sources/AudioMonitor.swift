@@ -11,7 +11,7 @@ class AudioMonitor {
     // Smoothing state
     private var smoothedLevel: Float = 0
     private let smoothUp: Float = 0.4     // Fast attack — respond quickly to speech
-    private let smoothDown: Float = 0.08  // Slow release — don't drop between syllables
+    private let smoothDown: Float = 0.39  // Faster release — stop prompter quickly when voice drops
 
     init(levelCallback: ((Float) -> Void)? = nil) {
         self.levelCallback = levelCallback
@@ -36,8 +36,9 @@ class AudioMonitor {
 
             // Convert to a more perceptually useful scale:
             // Boost low-level signals so speech is clearly above threshold.
-            // A simple power curve works well: level = raw^0.4 gives ~10x boost at 0.01
-            let boosted = powf(raw, 0.4)
+            // Power curve: lower exponent = more boost for quiet signals
+            // 0.3 gives strong boost so normal speech is well above threshold
+            let boosted = powf(raw, 0.3)
 
             // Exponential moving average with asymmetric attack/release
             let alpha = boosted > self.smoothedLevel ? self.smoothUp : self.smoothDown

@@ -7,7 +7,7 @@ struct MainView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "#141416")!.ignoresSafeArea()
+            Color(hex: "#1A1D22")!.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Top toolbar
@@ -22,6 +22,12 @@ struct MainView: View {
                 // Script editor
                 scriptEditor
                     .padding(16)
+
+                Divider()
+                    .background(Color.white.opacity(0.06))
+
+                // Quick controls: font size, scroll speed, sensitivity
+                quickControls
 
                 Divider()
                     .background(Color.white.opacity(0.06))
@@ -79,7 +85,7 @@ struct MainView: View {
     private var scriptEditor: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(hex: "#1E1E22")!)
+                .fill(Color(hex: "#22252B")!)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
@@ -102,6 +108,90 @@ struct MainView: View {
         }
     }
 
+    // MARK: - Quick Controls
+
+    private var quickControls: some View {
+        HStack(spacing: 20) {
+            controlSlider(
+                icon: "textformat.size",
+                title: "Font Size",
+                label: "\(Int(appState.fontSize))px",
+                value: $appState.fontSize,
+                range: 16...80,
+                step: 1
+            )
+
+            dividerLine
+
+            controlSlider(
+                icon: "arrow.up.arrow.down",
+                title: "Speed",
+                label: speedLabel,
+                value: $appState.scrollSpeed,
+                range: 10...150,
+                step: 5
+            )
+
+            dividerLine
+
+            controlSlider(
+                icon: "mic.fill",
+                title: "Sensitivity",
+                label: sensitivityLabel,
+                value: Binding(
+                    get: { CGFloat(appState.micSensitivity) },
+                    set: { appState.micSensitivity = Float($0) }
+                ),
+                range: 0.05...0.5,
+                step: 0.01
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+    }
+
+    private func controlSlider(icon: String, title: String, label: String, value: Binding<CGFloat>, range: ClosedRange<CGFloat>, step: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color(hex: "#B2884F")!.opacity(0.7))
+                .frame(width: 14)
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.5))
+                .fixedSize()
+
+            Slider(value: value, in: range, step: step)
+                .frame(minWidth: 80)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
+                .frame(width: 52, alignment: .trailing)
+        }
+    }
+
+    private var dividerLine: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.06))
+            .frame(width: 1, height: 20)
+    }
+
+    private var speedLabel: String {
+        if appState.scrollSpeed < 30 { return "Slow" }
+        if appState.scrollSpeed < 70 { return "Med" }
+        if appState.scrollSpeed < 110 { return "Fast" }
+        return "V.Fast"
+    }
+
+    private var sensitivityLabel: String {
+        if appState.micSensitivity < 0.1 { return "V.High" }
+        if appState.micSensitivity < 0.18 { return "High" }
+        if appState.micSensitivity < 0.3 { return "Med" }
+        return "Low"
+    }
+
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
@@ -111,10 +201,9 @@ struct MainView: View {
                 .frame(width: 120, height: 6)
 
             if appState.isPrompting {
-                // Status
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(appState.isPaused ? Color.yellow : Color.green)
+                        .fill(appState.isPaused ? Color(hex: "#D7B58E")! : Color(hex: "#B2884F")!)
                         .frame(width: 8, height: 8)
                     Text(appState.isPaused ? "Paused" : "Live")
                         .font(.system(size: 12, weight: .medium))
@@ -150,10 +239,23 @@ struct MainView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)
-                    .background(Color.red.opacity(0.7))
+                    .background(Color(hex: "#8B3A3A")!.opacity(0.9))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
+            } else if appState.isLoading {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                    Text("Starting...")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 Button(action: { appState.startPrompting() }) {
                     HStack(spacing: 8) {
@@ -167,7 +269,7 @@ struct MainView: View {
                     .padding(.vertical, 10)
                     .background(
                         LinearGradient(
-                            colors: [Color(hex: "#6C5CE7")!, Color(hex: "#5B4ED4")!],
+                            colors: [Color(hex: "#B2884F")!, Color(hex: "#96703F")!],
                             startPoint: .top,
                             endPoint: .bottom
                         )

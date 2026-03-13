@@ -107,7 +107,7 @@ struct SettingsView: View {
             }
         }
         .frame(width: 500, height: 580)
-        .background(Color(hex: "#1A1A1E")!)
+        .background(Color(hex: "#1A1D22")!)
         .preferredColorScheme(.dark)
     }
 

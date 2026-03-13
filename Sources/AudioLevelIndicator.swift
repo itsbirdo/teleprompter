@@ -32,7 +32,7 @@ struct AudioLevelIndicator: View {
 
     private var barColor: Color {
         if level > threshold {
-            return Color.green
+            return Color(hex: "#B2884F")!
         }
         return Color.white.opacity(0.3)
     }

@@ -10,6 +10,7 @@ class AppState: ObservableObject {
 
     // MARK: - Teleprompter State
     @Published var isPrompting = false
+    @Published var isLoading = false
     @Published var scrollOffset: CGFloat = 0
     @Published var totalContentHeight: CGFloat = 0
     @Published var isSpeaking = false
@@ -18,7 +19,7 @@ class AppState: ObservableObject {
 
     // Speech hold: keeps scrolling during natural pauses between words
     private var speechHoldTimer: Timer?
-    private let speechHoldDuration: TimeInterval = 0.6 // seconds to keep scrolling after voice drops
+    private let speechHoldDuration: TimeInterval = 0.1 // seconds to keep scrolling after voice drops
 
     // Smooth scroll velocity (eases in/out instead of instant start/stop)
     @Published var scrollVelocity: CGFloat = 0
@@ -70,11 +71,11 @@ class AppState: ObservableObject {
     init() {
         let defaults = UserDefaults.standard
         self.scriptText = defaults.string(forKey: "scriptText")
-            ?? "Welcome to Teleprompter.\n\nPaste or type your script here. When you start the teleprompter, this text will appear in a floating window near your camera.\n\nThe text scrolls automatically when it detects your voice through the microphone. Pause speaking and the scroll pauses too.\n\nYou can adjust the font size, scroll speed, colors, and microphone sensitivity in Settings.\n\nPress Command+Return to start, and Escape to stop."
+            ?? "Welcome to Teleprompter.\n\nPaste or type your script here. When you start the teleprompter, this text will appear in a floating window near your camera.\n\nThe text scrolls automatically when it detects your voice through the microphone. Pause speaking and the scroll pauses too.\n\nYou can adjust the font size, scroll speed, colors, and microphone sensitivity at the bottom of the window. Check the settings for more customisation.\n\nPress Command+Return to start, and Escape to stop."
         self.fontSize = CGFloat(defaults.double(forKey: "fontSize").nonZero ?? 36)
         self.textColorHex = defaults.string(forKey: "textColorHex") ?? "#FFFFFF"
         self.scrollSpeed = CGFloat(defaults.double(forKey: "scrollSpeed").nonZero ?? 55)
-        self.micSensitivity = Float(defaults.double(forKey: "micSensitivity").nonZero ?? 0.15)
+        self.micSensitivity = Float(defaults.double(forKey: "micSensitivity").nonZero ?? 0.28)
         self.windowOpacity = CGFloat(defaults.double(forKey: "windowOpacity").nonZero ?? 0.92)
         self.countdownDuration = defaults.object(forKey: "countdownDuration") as? Int ?? 3
         self.teleprompterWidth = CGFloat(defaults.double(forKey: "teleprompterWidth").nonZero ?? 480)
@@ -85,28 +86,34 @@ class AppState: ObservableObject {
     // MARK: - Teleprompter Control
 
     func startPrompting() {
-        guard !isPrompting, !isCountingDown else { return }
+        guard !isPrompting, !isCountingDown, !isLoading else { return }
 
+        isLoading = true
         scrollOffset = 0
         isPaused = false
-        isCountingDown = true
-        countdownValue = countdownDuration
 
-        if countdownDuration == 0 {
-            isCountingDown = false
-            beginScrolling()
-            return
-        }
+        // Brief minimum loading time, then proceed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self else { return }
 
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            DispatchQueue.main.async {
-                self.countdownValue -= 1
-                if self.countdownValue <= 0 {
-                    timer.invalidate()
-                    self.countdownTimer = nil
-                    self.isCountingDown = false
-                    self.beginScrolling()
+            if self.countdownDuration == 0 {
+                self.beginScrolling()
+                return
+            }
+
+            self.isCountingDown = true
+            self.countdownValue = self.countdownDuration
+
+            self.countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+                guard let self else { timer.invalidate(); return }
+                DispatchQueue.main.async {
+                    self.countdownValue -= 1
+                    if self.countdownValue <= 0 {
+                        timer.invalidate()
+                        self.countdownTimer = nil
+                        self.isCountingDown = false
+                        self.beginScrolling()
+                    }
                 }
             }
         }
@@ -121,6 +128,9 @@ class AppState: ObservableObject {
             panelController = TeleprompterPanelController(appState: self)
         }
         panelController?.showPanel()
+
+        // Clear loading now that the panel is visible
+        isLoading = false
 
         // Start audio monitoring
         audioMonitor = AudioMonitor { [weak self] level in
@@ -156,7 +166,7 @@ class AppState: ObservableObject {
             DispatchQueue.main.async {
                 let targetVelocity: CGFloat = (self.isSpeaking && !self.isPaused) ? self.scrollSpeed : 0
                 // Ease toward target velocity for smooth start/stop
-                let easeSpeed: CGFloat = 0.12
+                let easeSpeed: CGFloat = 0.49
                 self.scrollVelocity += (targetVelocity - self.scrollVelocity) * easeSpeed
 
                 if self.scrollVelocity > 0.1 {
@@ -169,6 +179,7 @@ class AppState: ObservableObject {
     func stopPrompting() {
         isPrompting = false
         isCountingDown = false
+        isLoading = false
         isPaused = false
 
         countdownTimer?.invalidate()
